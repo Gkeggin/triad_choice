@@ -1,22 +1,8 @@
 const totalTrials = 75;
-let currentTrial = 0;
-const objectCount = 75;    // Number of objects
-const angleStep = 5;       // Angle increments
-const maxAngle = 180;      // Max angle allowed
-
-// To keep track of used objects so no repeats
-const usedObjects = new Set();
-
-// Missing files log
-const missingFiles = [];
-
-const trialContainer = document.getElementById('trial-container');
-const progressBar = document.getElementById('progress-bar');
-
-function updateProgressBar() {
-  const percent = (currentTrial / totalTrials) * 100;
-  progressBar.style.width = percent + '%';
-}
+let trialCount = 0;
+const objectCount = 75;  // total different objects
+const angleStep = 5;     // angle increments
+const maxAngle = 180;
 
 function sampleAngle() {
   const steps = maxAngle / angleStep + 1;
@@ -46,97 +32,59 @@ function constrainedSample(refAngle) {
   return { near, far };
 }
 
-function checkImageExists(url) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(true);
-    img.onerror = () => resolve(false);
-    img.src = url;
-  });
+function startExperiment() {
+  trialCount = 0;
+  nextTrial();
 }
 
-async function nextTrial() {
-  if (currentTrial >= totalTrials) {
+function nextTrial() {
+  trialCount++;
+  if (trialCount > totalTrials) {
     showEndScreen();
-    console.log('Missing files during experiment:', missingFiles);
     return;
   }
-
-  // Pick an unused objectId
-  let objectId;
-  do {
-    objectId = Math.floor(Math.random() * objectCount) + 1;
-  } while (usedObjects.has(objectId) && usedObjects.size < objectCount);
-  usedObjects.add(objectId);
-
-  // Sample reference angle and options
+  
+  // Pick random object from 1 to 75
+  const objectId = Math.floor(Math.random() * objectCount) + 1;
+  
   const refAngle = sampleAngle();
   const { near, far } = constrainedSample(refAngle);
-
-  // Construct file paths
-  const refFile = `stimuli/${objectId}_rot_${refAngle}.png`;
-  const nearFile = `stimuli/${objectId}_rot_${near}.png`;
-  const farFile = `stimuli/${objectId}_rot_${far}.png`;
-
-  // Check if all images exist
-  const refExists = await checkImageExists(refFile);
-  const nearExists = await checkImageExists(nearFile);
-  const farExists = await checkImageExists(farFile);
-
-  if (!refExists) {
-    missingFiles.push(refFile);
-    console.warn('Missing reference image:', refFile);
-  }
-  if (!nearExists) {
-    missingFiles.push(nearFile);
-    console.warn('Missing option 1 image:', nearFile);
-  }
-  if (!farExists) {
-    missingFiles.push(farFile);
-    console.warn('Missing option 2 image:', farFile);
-  }
-
-  // If any missing, skip trial and retry
-  if (!refExists || !nearExists || !farExists) {
-    // Just retry the trial with a different object
-    return nextTrial();
-  }
-
-  currentTrial++;
-  updateProgressBar();
-
-  // Show trial HTML
-  trialContainer.innerHTML = `
-    <h3>Trial ${currentTrial} of ${totalTrials}</h3>
+  
+  // Convert angles to file indexes (angle / 5)
+  const refIndex = refAngle / angleStep;
+  const nearIndex = near / angleStep;
+  const farIndex = far / angleStep;
+  
+  const refFile = `stimuli/${objectId}_rot_${refIndex}.png`;
+  const nearFile = `stimuli/${objectId}_rot_${nearIndex}.png`;
+  const farFile = `stimuli/${objectId}_rot_${farIndex}.png`;
+  
+  const html = `
+    <h3>Trial ${trialCount} of ${totalTrials}</h3>
     <h3>Reference image</h3>
-    <img id="reference-img" src="${refFile}" alt="Reference image" />
-    <h3>Options (click the more similar)</h3>
+    <img src="${refFile}" alt="Reference image" id="reference-img" />
+    <h3>Options (click the most similar)</h3>
     <div>
       <img class="option" id="option1" src="${nearFile}" alt="Option 1" />
       <img class="option" id="option2" src="${farFile}" alt="Option 2" />
     </div>
   `;
-
-  // Click handlers for options
-  document.getElementById('option1').onclick = () => {
-    console.log(`Trial ${currentTrial}: Chose option 1 (angle ${near})`);
+  const container = document.getElementById('experiment-container');
+  container.innerHTML = html;
+  
+  container.querySelector('#option1').onclick = () => {
+    console.log(`Trial ${trialCount}: Chose option 1 (angle ${near})`);
     nextTrial();
   };
-
-  document.getElementById('option2').onclick = () => {
-    console.log(`Trial ${currentTrial}: Chose option 2 (angle ${far})`);
+  container.querySelector('#option2').onclick = () => {
+    console.log(`Trial ${trialCount}: Chose option 2 (angle ${far})`);
     nextTrial();
   };
 }
 
 function showEndScreen() {
-  trialContainer.innerHTML = `<h2>Thank you for completing the experiment!</h2>`;
-  console.log('Experiment finished.');
-  console.log('Missing files encountered:', missingFiles);
+  const html = `<h2>Thank you for completing the experiment!</h2>`;
+  document.getElementById('experiment-container').innerHTML = html;
 }
 
-// Start experiment on page load
-window.onload = () => {
-  updateProgressBar();
-  nextTrial();
-};
+window.onload = () => startExperiment();
