@@ -12,6 +12,7 @@ html, body {
   margin-bottom: 20px;
   position: fixed;
   top: 0; left: 0;
+  z-index: 1000;
 }
 
 #progress-bar {
@@ -28,6 +29,7 @@ html, body {
   width: 100%;
   max-width: 900px;
   user-select: none;
+  padding-top: 20px;
 }
 
 img.option {
