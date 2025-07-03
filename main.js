@@ -1,90 +1,128 @@
 const totalTrials = 75;
-let trialCount = 0;
-const objectCount = 75;  // total different objects
-const angleStep = 5;     // angle increments
-const maxAngle = 180;
+let currentTrial = 0;
+const objectCount = 75;
+const maxIndex = 36;  // indices for 0 to 180 degrees in 5 degree steps
 
-function sampleAngle() {
-  const steps = maxAngle / angleStep + 1;
-  return Math.floor(Math.random() * steps) * angleStep;
+const trialContainer = document.getElementById('trial-container');
+const progressBar = document.getElementById('progress-bar');
+
+function updateProgressBar() {
+  const percent = (currentTrial / totalTrials) * 100;
+  progressBar.style.width = percent + '%';
 }
 
 function normalRandom() {
-  // Box-Muller transform for mean=0, sd=1
   let u = 0, v = 0;
-  while(u === 0) u = Math.random();
-  while(v === 0) v = Math.random();
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
 
-function clampAngle(a) {
-  return Math.min(Math.max(a, 0), maxAngle);
+function clampIndex(idx) {
+  return Math.min(Math.max(idx, 0), maxIndex);
 }
 
-function constrainedSample(refAngle) {
-  const sdNear = 5;
-  const sdFar = 15;
+function constrainedSample(refIndex) {
+  const sdNear = 1;
+  const sdFar = 3;
   let near, far;
   do {
-    near = clampAngle(refAngle + Math.round(normalRandom() * sdNear));
-    far = clampAngle(refAngle + Math.round(normalRandom() * sdFar));
-  } while(Math.abs(far - near) < 10 || near === far || far > maxAngle);
+    near = clampIndex(refIndex + Math.round(normalRandom() * sdNear));
+    far = clampIndex(refIndex + Math.round(normalRandom() * sdFar));
+  } while (Math.abs(far - near) < 2 || near === far || far > maxIndex);
   return { near, far };
 }
 
-function startExperiment() {
-  trialCount = 0;
-  nextTrial();
-}
-
-function nextTrial() {
-  trialCount++;
-  if (trialCount > totalTrials) {
+function showTrial() {
+  if (currentTrial >= totalTrials) {
     showEndScreen();
     return;
   }
-  
-  // Pick random object from 1 to 75
+
+  currentTrial++;
+  updateProgressBar();
+
   const objectId = Math.floor(Math.random() * objectCount) + 1;
-  
-  const refAngle = sampleAngle();
-  const { near, far } = constrainedSample(refAngle);
-  
-  // Convert angles to file indexes (angle / 5)
-  const refIndex = refAngle / angleStep;
-  const nearIndex = near / angleStep;
-  const farIndex = far / angleStep;
-  
+  const refIndex = Math.floor(Math.random() * (maxIndex + 1));
+  const { near, far } = constrainedSample(refIndex);
+
   const refFile = `stimuli/${objectId}_rot_${refIndex}.png`;
-  const nearFile = `stimuli/${objectId}_rot_${nearIndex}.png`;
-  const farFile = `stimuli/${objectId}_rot_${farIndex}.png`;
-  
-  const html = `
-    <h3>Trial ${trialCount} of ${totalTrials}</h3>
+  const nearFile = `stimuli/${objectId}_rot_${near}.png`;
+  const farFile = `stimuli/${objectId}_rot_${far}.png`;
+
+  trialContainer.innerHTML = `
+    <h3>Trial ${currentTrial} of ${totalTrials}</h3>
     <h3>Reference image</h3>
-    <img src="${refFile}" alt="Reference image" id="reference-img" />
+    <img id="reference-img" src="${refFile}" alt="Reference image" />
     <h3>Options (click the most similar)</h3>
     <div>
       <img class="option" id="option1" src="${nearFile}" alt="Option 1" />
       <img class="option" id="option2" src="${farFile}" alt="Option 2" />
     </div>
   `;
-  const container = document.getElementById('experiment-container');
-  container.innerHTML = html;
-  
-  container.querySelector('#option1').onclick = () => {
-    console.log(`Trial ${trialCount}: Chose option 1 (angle ${near})`);
-    nextTrial();
+
+  // Setup click handlers and save data
+  document.getElementById('option1').onclick = () => {
+    saveTrialData(objectId, refIndex, near, far, 1);
+    showTrial();
   };
-  container.querySelector('#option2').onclick = () => {
-    console.log(`Trial ${trialCount}: Chose option 2 (angle ${far})`);
-    nextTrial();
+
+  document.getElementById('option2').onclick = () => {
+    saveTrialData(objectId, refIndex, near, far, 2);
+    showTrial();
   };
+}
+
+const results = [];
+
+function saveTrialData(objectId, refIndex, near, far, choice) {
+  results.push({
+    trial: currentTrial,
+    objectId,
+    referenceIndex: refIndex,
+    referenceAngle: refIndex * 5,
+    nearIndex: near,
+    nearAngle: near * 5,
+    farIndex: far,
+    farAngle: far * 5,
+    choice
+  });
+  console.log(`Trial ${currentTrial}: Chose option ${choice}`);
 }
 
 function showEndScreen() {
-  const html = `<h2>Thank you for completing the experiment!</h2>`;
-  document.getElementById('experiment-container').innerHTML = html;
+  trialContainer.innerHTML = `<h2>Thank you for completing the experiment!</h2>
+    <button id="download-btn">Download Results</button>`;
+  progressBar.style.width = '100%';
+
+  document.getElementById('download-btn').onclick = downloadResults;
 }
 
-window.onload = () => startExperiment();
+function downloadResults() {
+  const header = [
+    'trial', 'objectId', 'referenceIndex', 'referenceAngle',
+    'nearIndex', 'nearAngle', 'farIndex', 'farAngle', 'choice'
+  ].join(',');
+
+  const csvRows = results.map(r =>
+    [r.trial, r.objectId, r.referenceIndex, r.referenceAngle,
+     r.nearIndex, r.nearAngle, r.farIndex, r.farAngle, r.choice].join(',')
+  );
+
+  const csvContent = [header, ...csvRows].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'triad_choice_results.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+window.onload = () => {
+  updateProgressBar();
+  showTrial();
+};
