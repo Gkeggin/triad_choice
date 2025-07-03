@@ -5,35 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Triad Rotation Experiment</title>
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      text-align: center;
+    }
     #progress-container {
       width: 100%;
       height: 20px;
       background: #ddd;
       margin-bottom: 20px;
+      border-radius: 10px;
+      overflow: hidden;
     }
     #progress-bar {
       height: 100%;
       width: 0%;
-      background: #4caf50;
+      background: green;
       transition: width 0.3s ease;
     }
     #trial-container img {
-      cursor: pointer;
       border: 3px solid transparent;
-      margin: 0 20px;
+      cursor: pointer;
       width: 150px;
+      margin: 0 15px;
+      border-radius: 6px;
       transition: border-color 0.3s ease;
     }
     #trial-container img:hover {
       border-color: green;
     }
-    #trial-container {
-      text-align: center;
-    }
   </style>
 </head>
 <body>
-  <div id="progress-container"><div id="progress-bar"></div></div>
+
+  <h1>Triad Rotation Experiment</h1>
+
+  <div id="progress-container">
+    <div id="progress-bar"></div>
+  </div>
+
   <div id="trial-container"></div>
 
   <script src="main.js"></script>
