@@ -1,7 +1,7 @@
 const totalTrials = 75;
+const objectCount = 75;   // number of objects
+const maxRotIndex = 74;   // rot_0 to rot_74
 let currentTrial = 0;
-const maxIndex = 74;  // max rotation index (0 to 74)
-const objectCount = 75; // objects 1 to 75
 
 const trialContainer = document.getElementById('trial-container');
 const progressBar = document.getElementById('progress-bar');
@@ -11,45 +11,52 @@ function updateProgressBar() {
   progressBar.style.width = percent + '%';
 }
 
+// Box-Muller transform for normal distribution (mean=0, sd=1)
 function normalRandom() {
-  // Box-Muller transform for mean=0, sd=1
   let u = 0, v = 0;
-  while(u === 0) u = Math.random();
-  while(v === 0) v = Math.random();
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
 
-function constrainedSampleIndex(refIndex) {
+function clampIndex(i) {
+  return Math.min(Math.max(i, 0), maxRotIndex);
+}
+
+function sampleIndex() {
+  return Math.floor(Math.random() * (maxRotIndex + 1));
+}
+
+function constrainedSample(refIndex) {
+  const sdNear = 3;
+  const sdFar = 6;
   let near, far;
   do {
-    near = Math.min(Math.max(0, refIndex + Math.round(normalRandom() * 5)), maxIndex);
-    far = Math.min(Math.max(0, refIndex + Math.round(normalRandom() * 15)), maxIndex);
-  } while (Math.abs(far - near) < 2 || near === far);
+    near = clampIndex(refIndex + Math.round(normalRandom() * sdNear));
+    far = clampIndex(refIndex + Math.round(normalRandom() * sdFar));
+  } while (Math.abs(far - near) < 10 || near === far);
   return { near, far };
 }
 
 function nextTrial() {
-  if (currentTrial >= totalTrials) {
+  currentTrial++;
+  if (currentTrial > totalTrials) {
     showEndScreen();
     return;
   }
-  currentTrial++;
-  updateProgressBar();
 
-  // Random object ID between 1 and 75
+  // Pick random object 1 to 75
   const objectId = Math.floor(Math.random() * objectCount) + 1;
 
-  // Sample reference rotation index and near/far indexes
-  const refIndex = Math.floor(Math.random() * (maxIndex + 1));
-  const { near, far } = constrainedSampleIndex(refIndex);
+  // Sample indices for ref, near, and far rotations
+  const refIndex = sampleIndex();
+  const { near, far } = constrainedSample(refIndex);
 
-  // Build image filenames
   const refFile = `stimuli/${objectId}_rot_${refIndex}.png`;
   const nearFile = `stimuli/${objectId}_rot_${near}.png`;
   const farFile = `stimuli/${objectId}_rot_${far}.png`;
 
-  // Show trial content
-  trialContainer.innerHTML = `
+  const html = `
     <h3>Trial ${currentTrial} of ${totalTrials}</h3>
     <h3>Reference image</h3>
     <img id="reference-img" src="${refFile}" alt="Reference Image" />
@@ -60,51 +67,27 @@ function nextTrial() {
     </div>
   `;
 
-  // Setup click handlers to save data and proceed to next trial
+  trialContainer.innerHTML = html;
+  updateProgressBar();
+
   document.getElementById('option1').onclick = () => {
-    saveResponse(objectId, refIndex, near, far, 'option1');
+    console.log(`Trial ${currentTrial}: Chose option 1 (index ${near})`);
     nextTrial();
   };
+
   document.getElementById('option2').onclick = () => {
-    saveResponse(objectId, refIndex, near, far, 'option2');
+    console.log(`Trial ${currentTrial}: Chose option 2 (index ${far})`);
     nextTrial();
   };
-}
-
-// Data saving array to hold all responses
-const responses = [];
-
-function saveResponse(objectId, refIndex, near, far, chosenOption) {
-  responses.push({
-    trial: currentTrial,
-    objectId,
-    refIndex,
-    near,
-    far,
-    chosenOption,
-    timestamp: new Date().toISOString()
-  });
-  console.log(`Trial ${currentTrial}: Chose ${chosenOption}`);
 }
 
 function showEndScreen() {
-  // Create CSV string from responses
-  const header = "trial,objectId,refIndex,near,far,chosenOption,timestamp\n";
-  const rows = responses.map(r => 
-    `${r.trial},${r.objectId},${r.refIndex},${r.near},${r.far},${r.chosenOption},${r.timestamp}`
-  ).join("\n");
-  const csvContent = header + rows;
-
-  // Create downloadable link for CSV
-  const blob = new Blob([csvContent], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  trialContainer.innerHTML = `
-    <h2>Thank you for completing the experiment!</h2>
-    <a href="${url}" download="triad_choice_responses.csv">Download your responses (CSV)</a>
-  `;
+  trialContainer.innerHTML = `<h2>Thank you for completing the experiment!</h2>`;
+  progressBar.style.width = '100%';
 }
 
 window.onload = () => {
+  currentTrial = 0;
   updateProgressBar();
   nextTrial();
 };
