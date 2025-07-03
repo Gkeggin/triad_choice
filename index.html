@@ -4,53 +4,38 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Triad Rotation Experiment</title>
-  <link rel="stylesheet" href="styles.css" />
   <style>
-    /* Quick CSS for progress bar */
     #progress-container {
       width: 100%;
       height: 20px;
-      background-color: #ddd;
+      background: #ddd;
       margin-bottom: 20px;
-      border-radius: 10px;
-      overflow: hidden;
     }
     #progress-bar {
       height: 100%;
       width: 0%;
-      background-color: #4caf50;
+      background: #4caf50;
       transition: width 0.3s ease;
     }
-    /* Center trial container */
-    #trial-container {
-      max-width: 600px;
-      margin: auto;
-      text-align: center;
-    }
-    /* Style trial images */
     #trial-container img {
-      max-width: 200px;
-      margin: 10px;
       cursor: pointer;
       border: 3px solid transparent;
-      border-radius: 6px;
+      margin: 0 20px;
+      width: 150px;
+      transition: border-color 0.3s ease;
     }
     #trial-container img:hover {
       border-color: green;
     }
+    #trial-container {
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-
-  <!-- Progress bar container -->
-  <div id="progress-container">
-    <div id="progress-bar"></div>
-  </div>
-
-  <!-- Trial content -->
+  <div id="progress-container"><div id="progress-bar"></div></div>
   <div id="trial-container"></div>
 
-  <!-- main JS file -->
   <script src="main.js"></script>
 </body>
 </html>
