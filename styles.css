@@ -12,13 +12,13 @@ html, body {
   margin-bottom: 20px;
   position: fixed;
   top: 0; left: 0;
-  z-index: 1000;
+  z-index: 10;
 }
 
 #progress-bar {
   width: 0%;
   height: 100%;
-  background-color: #4CAF50; /* Green fill */
+  background-color: #4CAF50;
   transition: width 0.3s ease;
 }
 
@@ -29,7 +29,6 @@ html, body {
   width: 100%;
   max-width: 900px;
   user-select: none;
-  padding-top: 20px;
 }
 
 img.option {
