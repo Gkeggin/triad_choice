@@ -1,7 +1,7 @@
 const totalTrials = 75;
 let currentTrial = 0;
-const objectCount = 75;
-const maxIndex = 36;  // indices for 0 to 180 degrees in 5 degree steps
+const maxIndex = 74;  // max rotation index (0 to 74)
+const objectCount = 75; // objects 1 to 75
 
 const trialContainer = document.getElementById('trial-container');
 const progressBar = document.getElementById('progress-bar');
@@ -12,48 +12,47 @@ function updateProgressBar() {
 }
 
 function normalRandom() {
+  // Box-Muller transform for mean=0, sd=1
   let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
+  while(u === 0) u = Math.random();
+  while(v === 0) v = Math.random();
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
 
-function clampIndex(idx) {
-  return Math.min(Math.max(idx, 0), maxIndex);
-}
-
-function constrainedSample(refIndex) {
-  const sdNear = 1;
-  const sdFar = 3;
+function constrainedSampleIndex(refIndex) {
   let near, far;
   do {
-    near = clampIndex(refIndex + Math.round(normalRandom() * sdNear));
-    far = clampIndex(refIndex + Math.round(normalRandom() * sdFar));
-  } while (Math.abs(far - near) < 2 || near === far || far > maxIndex);
+    near = Math.min(Math.max(0, refIndex + Math.round(normalRandom() * 5)), maxIndex);
+    far = Math.min(Math.max(0, refIndex + Math.round(normalRandom() * 15)), maxIndex);
+  } while (Math.abs(far - near) < 2 || near === far);
   return { near, far };
 }
 
-function showTrial() {
+function nextTrial() {
   if (currentTrial >= totalTrials) {
     showEndScreen();
     return;
   }
-
   currentTrial++;
   updateProgressBar();
 
+  // Random object ID between 1 and 75
   const objectId = Math.floor(Math.random() * objectCount) + 1;
-  const refIndex = Math.floor(Math.random() * (maxIndex + 1));
-  const { near, far } = constrainedSample(refIndex);
 
+  // Sample reference rotation index and near/far indexes
+  const refIndex = Math.floor(Math.random() * (maxIndex + 1));
+  const { near, far } = constrainedSampleIndex(refIndex);
+
+  // Build image filenames
   const refFile = `stimuli/${objectId}_rot_${refIndex}.png`;
   const nearFile = `stimuli/${objectId}_rot_${near}.png`;
   const farFile = `stimuli/${objectId}_rot_${far}.png`;
 
+  // Show trial content
   trialContainer.innerHTML = `
     <h3>Trial ${currentTrial} of ${totalTrials}</h3>
     <h3>Reference image</h3>
-    <img id="reference-img" src="${refFile}" alt="Reference image" />
+    <img id="reference-img" src="${refFile}" alt="Reference Image" />
     <h3>Options (click the most similar)</h3>
     <div>
       <img class="option" id="option1" src="${nearFile}" alt="Option 1" />
@@ -61,68 +60,51 @@ function showTrial() {
     </div>
   `;
 
-  // Setup click handlers and save data
+  // Setup click handlers to save data and proceed to next trial
   document.getElementById('option1').onclick = () => {
-    saveTrialData(objectId, refIndex, near, far, 1);
-    showTrial();
+    saveResponse(objectId, refIndex, near, far, 'option1');
+    nextTrial();
   };
-
   document.getElementById('option2').onclick = () => {
-    saveTrialData(objectId, refIndex, near, far, 2);
-    showTrial();
+    saveResponse(objectId, refIndex, near, far, 'option2');
+    nextTrial();
   };
 }
 
-const results = [];
+// Data saving array to hold all responses
+const responses = [];
 
-function saveTrialData(objectId, refIndex, near, far, choice) {
-  results.push({
+function saveResponse(objectId, refIndex, near, far, chosenOption) {
+  responses.push({
     trial: currentTrial,
     objectId,
-    referenceIndex: refIndex,
-    referenceAngle: refIndex * 5,
-    nearIndex: near,
-    nearAngle: near * 5,
-    farIndex: far,
-    farAngle: far * 5,
-    choice
+    refIndex,
+    near,
+    far,
+    chosenOption,
+    timestamp: new Date().toISOString()
   });
-  console.log(`Trial ${currentTrial}: Chose option ${choice}`);
+  console.log(`Trial ${currentTrial}: Chose ${chosenOption}`);
 }
 
 function showEndScreen() {
-  trialContainer.innerHTML = `<h2>Thank you for completing the experiment!</h2>
-    <button id="download-btn">Download Results</button>`;
-  progressBar.style.width = '100%';
+  // Create CSV string from responses
+  const header = "trial,objectId,refIndex,near,far,chosenOption,timestamp\n";
+  const rows = responses.map(r => 
+    `${r.trial},${r.objectId},${r.refIndex},${r.near},${r.far},${r.chosenOption},${r.timestamp}`
+  ).join("\n");
+  const csvContent = header + rows;
 
-  document.getElementById('download-btn').onclick = downloadResults;
-}
-
-function downloadResults() {
-  const header = [
-    'trial', 'objectId', 'referenceIndex', 'referenceAngle',
-    'nearIndex', 'nearAngle', 'farIndex', 'farAngle', 'choice'
-  ].join(',');
-
-  const csvRows = results.map(r =>
-    [r.trial, r.objectId, r.referenceIndex, r.referenceAngle,
-     r.nearIndex, r.nearAngle, r.farIndex, r.farAngle, r.choice].join(',')
-  );
-
-  const csvContent = [header, ...csvRows].join('\n');
+  // Create downloadable link for CSV
   const blob = new Blob([csvContent], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'triad_choice_results.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  trialContainer.innerHTML = `
+    <h2>Thank you for completing the experiment!</h2>
+    <a href="${url}" download="triad_choice_responses.csv">Download your responses (CSV)</a>
+  `;
 }
 
 window.onload = () => {
   updateProgressBar();
-  showTrial();
+  nextTrial();
 };
