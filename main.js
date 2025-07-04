@@ -34,7 +34,7 @@ function constrainedSample(refIndex) {
   do {
     near = clampIndex(refIndex + Math.round(normalRandom() * sdNear));
     far = clampIndex(refIndex + Math.round(normalRandom() * sdFar));
-  } while (Math.abs(far - near) < 10 || near === far);
+  } while (Math.abs(far - near) < 2 || near === far);  // <-- changed here
   return { near, far };
 }
 
@@ -45,16 +45,15 @@ function nextTrial() {
     return;
   }
 
-  // Pick random object 1 to 75
   const objectId = Math.floor(Math.random() * objectCount) + 1;
-
-  // Sample indices for ref, near, and far rotations
   const refIndex = sampleIndex();
   const { near, far } = constrainedSample(refIndex);
 
   const refFile = `stimuli/${objectId}_rot_${refIndex}.png`;
   const nearFile = `stimuli/${objectId}_rot_${near}.png`;
   const farFile = `stimuli/${objectId}_rot_${far}.png`;
+
+  console.log('Trial', currentTrial, 'Files:', refFile, nearFile, farFile);  // Debug
 
   const html = `
     <h3>Trial ${currentTrial} of ${totalTrials}</h3>
